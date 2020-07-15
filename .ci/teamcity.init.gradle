@@ -17,23 +17,24 @@
  * under the License.
  */
 
-package builds
+final String buildCacheUrl = System.getProperty('org.elasticsearch.build.cache.url')
+final boolean buildCachePush = Boolean.valueOf(System.getProperty('org.elasticsearch.build.cache.push', 'false'))
 
-import dependsOn
-import jetbrains.buildServer.configs.kotlin.v2019_2.BuildType
-import jetbrains.buildServer.configs.kotlin.v2019_2.buildSteps.gradle
-
-object XpackChecks : BuildType({
-    name = "X-Pack Checks"
-    description = "Runs test suite for x-pack distribution modules"
-
-    dependsOn(SanityCheck)
-
-    steps {
-        gradle {
-            useGradleWrapper = true
-            gradleParams = "%env.GRADLE_PARAMS%"
-            tasks = "checkPart2"
-        }
+if (buildCacheUrl) {
+  gradle.settingsEvaluated { settings ->
+    settings.buildCache {
+      local {
+        // Disable the local build cache in CI since we use ephemeral workers and it incurs an IO penalty
+        enabled = false
+      }
+      remote(HttpBuildCache) {
+        url = buildCacheUrl
+        push = buildCachePush
+//        credentials {
+//          username = buildCacheCredentials.get("username")
+//          password = buildCacheCredentials.get("password")
+//        }
+      }
     }
-})
+  }
+}
